@@ -1,0 +1,33 @@
+Managed Mode Workflow
+
+Import and Install Python SDK for AWS
+
+Prompt user for AWS Account they want to add
+Prompt for AWS Credentials or API Key
+Prompt User for Account ID and External ID (aws)
+
+Create Read Only Policy in AWS IAM
+    - Create Policy (aws)
+    - Insert JSON from file (aws)
+    - Name policy dome9-readonly-policy (aws)
+
+Create Write Policy in AWS IAM
+    - Create Policy  (aws)
+    - Insert JSON from file  (aws)
+    - Name dome9-write-policy  (aws)
+    
+    
+Create IAM Role for Dome9
+    - Create new IAM role (aws)
+    
+    - Select the following policies: (aws)
+        - ‘SecurityAudit’ (AWS managed policy)
+	    - ’AmazonInspectorReadOnlyAccess’ (AWS managed policy)
+	    - ‘dome9-readonly-policy’
+	    - ‘dome9-write-policy’ 
+    - Parse JSON - ARN is returned from AWS
+    - Store ARN as variable
+    
+
+Send infromation to CloudAccounts Command (dome9)
+    
