@@ -4,11 +4,12 @@ import getpass
 import json
 import string
 from random import *
+from requests.auth import HTTPBasicAuth
 
 #Prompt User for information
 #Dome9
-dome9_api_key = input('Dome 9 API Key: ')
-dome9_api_sedret = getpass.getpass('Dome9 Secret Key: ')
+dome9_api_key = input('Dome9 API Key: ')
+dome9_api_secret = getpass.getpass('Dome9 Secret Key: ')
 
 #AWS
 access_key = input('AWS Access Key: ')
@@ -18,6 +19,10 @@ aws_account_name = input('AWS Account Name: ')
 #Gather Policy Name
 read_policy = 'dome9-readonly-policy'
 write_policy = 'dome9-write-policy'
+
+#Url + Command Variables
+command = "CloudAccounts"
+url = "https://api.dome9.com/v2/" + command
 
 #Create IAM client for AWS
 iam=boto3.client('iam', aws_access_key_id=access_key,
@@ -95,15 +100,18 @@ dome9_write_policy = {
 }
 
 response = iam.create_policy(
-  PolicyName='test1_write',
+  PolicyName=write_policy,
   PolicyDocument=json.dumps(dome9_write_policy)
 )
 
 print (response)
+
 #Parse JSON to grab Arn Prefix
-arn_prefix = response['Policy']['Arn']
-arn_prefix = arn_prefix.split('/', 1)
-arn_prefix = arn_prefix[0] + '/'
+arn_prefix_tmp = response['Policy']['Arn']
+arn_prefix_tmp=arn_prefix_tmp.split(':')
+arn_prefix_tmp=[':'.join(arn_prefix_tmp[0:5])]
+arn_prefix=arn_prefix_tmp[0]
+
 
 #Create Dome9 Role in AWS
 
@@ -149,10 +157,6 @@ response = iam.create_role(
  )
   
 print (response)
-print (response['Role']['Arn'])
-
-role_arn = response['Role']['Arn']
-
 
 #Add AWS Managed Policies
 aws_policy_list = ['arn:aws:iam::aws:policy/SecurityAudit','arn:aws:iam::aws:policy/AmazonInspectorReadOnlyAccess']
@@ -170,12 +174,20 @@ policy_name_list = [read_policy, write_policy]
 
 #Loop through list to Apply Access Policies to the newly created role
 for x in policy_name_list:
-    policy_arn = arn_prefix + x
+    policy_arn = arn_prefix +':policy/'+ x
     response=iam.attach_role_policy(
         PolicyArn=policy_arn,
         RoleName=role_name
     )
-role_arn = response['Role']['Arn']
+    
+role_arn = arn_prefix+':role/'+role_name
+
 #Attach Account to Dome9
-json_data = {"name": aws_account_name, "credentials": {"arn": sys.argv[2], "secret": externalid, "type": "RoleBased", "isReadOnly": d9readonly}, "fullProtection": "false"}
-    headers = {'content-type': 'application/json'}
+
+json_data = {"name": aws_account_name, "credentials": {"arn":role_arn, "secret": extid, "type": "RoleBased", "isReadOnly": "false"}, "fullProtection": "false"}
+
+headers = {'content-type': 'application/json'}
+
+response = requests.post(url, auth=(dome9_api_key, dome9_api_secret), json=json_data, headers=headers)
+
+print (response)
