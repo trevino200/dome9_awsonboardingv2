@@ -1,8 +1,12 @@
+#Script to onboard AWS accounts to Dome9
+#Written by Mike Braun and Matt Busby
+
 import boto3
 import requests
 import getpass
 import json
 import string
+import time
 from random import *
 from requests.auth import HTTPBasicAuth
 
@@ -12,17 +16,16 @@ dome9_api_key = input('Dome9 API Key: ')
 dome9_api_secret = getpass.getpass('Dome9 Secret Key: ')
 
 #AWS
-access_key = input('AWS Access Key: ')
-aws_secret_key = getpass.getpass('AWS Secret Key: ')
-aws_account_name = input('AWS Account Name: ')
+access_key =input('AWS Access Key: ')
+aws_secret_key =getpass.getpass('AWS Secret Key: ')
+aws_account_name =input('Friendly name of AWS account for Dome9: ')
 
 #Gather Policy Name
 read_policy = 'dome9-readonly-policy'
 write_policy = 'dome9-write-policy'
 
-#Url + Command Variables
-command = "CloudAccounts"
-url = "https://api.dome9.com/v2/" + command
+#Dome9 API
+url = "https://api.dome9.com/v2/CloudAccounts"
 
 #Create IAM client for AWS
 iam=boto3.client('iam', aws_access_key_id=access_key,
@@ -68,12 +71,16 @@ dome9_readonly_policy = {
     ]
 }
 
-response = iam.create_policy(
-  PolicyName=read_policy,
-  PolicyDocument=json.dumps(dome9_readonly_policy)
-)
+try:
+    response = iam.create_policy(
+      PolicyName=read_policy,
+      PolicyDocument=json.dumps(dome9_readonly_policy)
+    )
 
-print (response)
+    print (response)
+except Exception:
+    print ('dome9-readonly-policy already exists!')
+    pass
 
 #Create Dome9 write policy
 
@@ -99,18 +106,17 @@ dome9_write_policy = {
     ]
 }
 
-response = iam.create_policy(
-  PolicyName=write_policy,
-  PolicyDocument=json.dumps(dome9_write_policy)
-)
+try:
+    response = iam.create_policy(
+      PolicyName=write_policy,
+      PolicyDocument=json.dumps(dome9_write_policy)
+    )
+    print (response)
+except Exception:
+    print ('dome9-write-policy already exists!')
+    pass
 
-print (response)
 
-#Parse JSON to grab Arn Prefix
-arn_prefix_tmp = response['Policy']['Arn']
-arn_prefix_tmp=arn_prefix_tmp.split(':')
-arn_prefix_tmp=[':'.join(arn_prefix_tmp[0:5])]
-arn_prefix=arn_prefix_tmp[0]
 
 
 #Create Dome9 Role in AWS
@@ -147,17 +153,19 @@ tags=[
 ]
 
 #Create Initial Role
-response = iam.create_role(
-        Path=path,
-        RoleName=role_name,
-        AssumeRolePolicyDocument=json.dumps(trust_policy),
-        Description=description,
-        MaxSessionDuration=3600,
-        
- )
-  
-print (response)
+try:
+    response = iam.create_role(
+            Path=path,
+            RoleName=role_name,
+            AssumeRolePolicyDocument=json.dumps(trust_policy),
+            Description=description,
+            MaxSessionDuration=3600,
 
+     )
+
+    print (response)
+except Exception:
+    print ('Dome9-Connect role already exists!')
 #Add AWS Managed Policies
 aws_policy_list = ['arn:aws:iam::aws:policy/SecurityAudit','arn:aws:iam::aws:policy/AmazonInspectorReadOnlyAccess']
 
@@ -172,6 +180,20 @@ for arn in aws_policy_list:
 policy_name_list = [read_policy, write_policy]
 
 
+#Parse JSON to grab Arn Prefix
+
+response = iam.get_role(
+    RoleName=role_name
+)
+print(response['Role']['Arn'])
+
+arn_prefix_tmp = response['Role']['Arn']
+arn_prefix_tmp=arn_prefix_tmp.split(':')
+arn_prefix_tmp=[':'.join(arn_prefix_tmp[0:5])]
+arn_prefix=arn_prefix_tmp[0]
+
+
+
 #Loop through list to Apply Access Policies to the newly created role
 for x in policy_name_list:
     policy_arn = arn_prefix +':policy/'+ x
@@ -182,12 +204,18 @@ for x in policy_name_list:
     
 role_arn = arn_prefix+':role/'+role_name
 
+
+#Give AWS Time to process commands
+print ("working . . . ")
+time.sleep(20)
+
 #Attach Account to Dome9
 
 json_data = {"name": aws_account_name, "credentials": {"arn":role_arn, "secret": extid, "type": "RoleBased", "isReadOnly": "false"}, "fullProtection": "false"}
 
 headers = {'content-type': 'application/json'}
 
-response = requests.post(url, auth=(dome9_api_key, dome9_api_secret), json=json_data, headers=headers)
+print (json_data)
+response = requests.post(url, auth=HTTPBasicAuth(dome9_api_key, dome9_api_secret), json=json_data, headers=headers)
 
-print (response)
+print (response.content)
