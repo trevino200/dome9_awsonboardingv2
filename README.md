@@ -12,9 +12,9 @@ This script uses API keys from Dome9 and AWS to automatically onboard an AWS acc
 
 ## Installation
 ```bash
-	# Install Python v3.6 and PIP 
-    git clone https://github.com/metalstormbass/dome9_awsonboardingv2.git
-    pip install -r requirements.txt
+# Install Python v3.6 and PIP 
+git clone https://github.com/metalstormbass/dome9_awsonboardingv2.git
+pip install -r requirements.txt
 ```
 
 ### How to run:
