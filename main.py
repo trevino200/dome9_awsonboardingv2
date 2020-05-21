@@ -13,11 +13,11 @@ from requests.auth import HTTPBasicAuth
 #Prompt User for information
 #Dome9
 dome9_api_key = input('Dome9 API Key: ')
-dome9_api_secret = getpass.getpass('Dome9 Secret Key: ')
+dome9_api_secret =getpass.getpass('Dome9 Secret Key: ')
 
 #AWS
-access_key =input('AWS Access Key: ')
-aws_secret_key =getpass.getpass('AWS Secret Key: ')
+access_key = input('AWS Access Key: ')
+aws_secret_key = getpass.getpass('AWS Secret Key: ')
 aws_account_name =input('Friendly name of AWS account for Dome9: ')
 
 #Gather Policy Name
@@ -152,7 +152,7 @@ tags=[
     }
 ]
 
-#Create Initial Role
+#Create Initial Role or update external ID if exists
 try:
     response = iam.create_role(
             Path=path,
@@ -165,7 +165,10 @@ try:
 
     print (response)
 except Exception:
-    print ('Dome9-Connect role already exists!')
+    print ('Dome9-Connect role already exists! Please delete role and try again')
+  
+    
+    
 #Add AWS Managed Policies
 aws_policy_list = ['arn:aws:iam::aws:policy/SecurityAudit','arn:aws:iam::aws:policy/AmazonInspectorReadOnlyAccess']
 
